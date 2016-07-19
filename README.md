@@ -292,8 +292,7 @@ and inner classes are nearly always preferrable to embedded package classes.
 
 #### Synopsis:
 
-
-    `jdep` *option*... *file*...
+`jdep` *option*... *file*...
 
 Each *file* should be a Java `.class` file, which may be specified either with
 or without the trailing `.class` portion of the name.
