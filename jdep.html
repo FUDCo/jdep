@@ -1,0 +1,421 @@
+<html>
+<head>
+<title>jdep</title>
+<style type="text/css">
+<!--
+TT {
+    font-weight: normal;
+    font-family: courier, monospace;
+}
+-->
+</style> 
+</head>
+<body bgcolor="#FFFFFF" text="#000000">
+<table border=0 width=550>
+<tr>
+<td width=30><br></td>
+<td wdith=520>
+<h1><center>jdep</center></h1>
+<h2><center>A tool to help <tt>javac</tt> and <tt>make</tt> play
+nicely together</center></h2>
+<p>
+<h3>General Information</h3>
+<p>
+This page describes <tt>jdep</tt> version 1.3, dated 22-August-2009.
+<p>
+Jdep is a tool for analyzing Java <tt>.class</tt> file dependencies,
+so that the peculiar compilation behavior of many Java compilers can
+be tamed to be compatible with conventional Unix style Makefiles.
+<p>
+The official source and documentation for jdep is maintained at:
+<p>
+<dir><a href=http://www.fudco.com/software/jdep.html>http://www.fudco.com/software/jdep.html</a></dir>
+<p>
+At the moment, I'm only distributing this tool in source form, open sourced
+under the MIT license.
+<p>
+Bug reports, flames, questions and other feedback should be directed to:
+<p>
+<dir><a href=mailto:jdep-feedback@fudco.com>jdep-feedback@fudco.com</a></dir>
+<p>
+<h3>Installation</h3>
+<p>
+<dir>
+1. Download the <tt>jdep</tt> tarball from <a
+href=http://www.fudco.com/software/jdep-1.3.tar.gz>http://www.fudco.com/software/jdep-1.3.tar.gz</a>.
+<p>
+2. Unpack the tarball into a location of your choosing and <tt>cd</tt>
+to the <tt>jdep-1.3</tt> directory containing the package's source
+code.
+<p>
+3. Type <tt>make</tt> to compile the package.  It will produce two
+executable files in the <tt>bin</tt> subdirectory: <tt>jdep</tt> and
+<tt>touchp</tt> (the latter is actually just a simple shell script).
+<p>
+4. Copy the executables to wherever you put your installed executables.
+</dir>
+<p>
+<h3>Supported Platforms</h3>
+<p>
+This tool has been tested on and is known to work on (and indeed is used
+regularly on) every version of SPARC Solaris, x86 Red Hat Linux, Red Hat
+Enterprise Linux, Fedora, CentOS, FreeBSD, and Mac OSX I've encountered as of
+this writing.  It will work with all Sun Java JDKs up through JDK 6 (which is
+the most current version as of this writing).
+<p>
+More generally, I see no reason why <tt>jdep</tt> shouldn't be able to build
+and run without modification on any sane Unix platform or system that supports
+the Unix file API, as it doesn't do anything exotic at the OS level.  But I
+don't make any promises, and the usual disclaimers (which are more verbosely
+and legalistically explicated in the license terms included in the source
+distribution) apply.
+<p>
+You are welcome to make whatever use of this code you
+like, but if you fix any bugs or tweak it to work on a wider range of
+platforms, please do let me know and I'll be happy to roll your changes back
+into the main distribution.
+<p>
+<h3>What The Heck Is This?</h3>
+<p>
+(You don't need to read this section if all you want to know is how to use the
+tool. You can <a href="#instructions">skip ahead to the next section</a>. On
+the other hand, it's not much use knowing how to use the tool unless you
+understand the problem it's trying to solve, so you might want to read this
+section anyway, even though it's a bit long and rambling.)
+<p>
+This is my answer to the problem that Sun's Java compiler,
+<tt>javac</tt> does not play nicely with <tt>make</tt>. This is also a
+problem with any other Java compiler which attempts to emulate the
+behavior of <tt>javac</tt>, such as that provided with the Kaffe
+package. This is unspeakably irritating to those of us who would like
+to use the Unix command line tools as our principal development
+environment to develop Java code the same way we have always developed
+C or C++ or FORTRAN code or indeed code in just about any compiled
+language <i>except</i> Java.
+<p>
+Unlike, for example, C, Java does not have header files. This is good,
+in that it defines out of existence an entire class of C development
+bugs, wherein a header and the source file(s) it corresponds to get
+out of synch with each other. Instead, Java classes simply import the
+other classes they depend on. However, this means that to compile a
+Java class you need to have compiled the classes that it imports. But
+this introduces a couple of problems.
+<p>
+The first problem is that classes may be mutually dependent. That is,
+class X may import class Y while at the same time class Y imports
+class X. The <tt>javac</tt> compiler copes with this by requiring you
+to compile such classes together, i.e., in a single invocation of the
+compiler. This effectively precludes separate compilation in the sense
+that we have traditionally come to know it, where we compile each
+source file individually and then link the resulting <tt>.o</tt> files
+when done. This joint compilation requirement is the first step to
+making <tt>javac</tt> incompatible with <tt>make</tt>.
+<p>
+The second problem is more subtle and happens when class A imports
+class B but class B does <i>not</i> import class A. The authors of
+<tt>javac</tt> apparently recognized that Java's importation rules
+hindered the operation of <tt>make</tt> to a degree, so they
+incorporated a bunch of "make-like" behavior into <tt>javac</tt>
+itself.  Thus, if you attempt to compile class A and it requires the
+importation of class B, <tt>javac</tt> will go looking for
+<tt>B.class</tt>. If it fails to find it, it will then look for
+<tt>B.java</tt> and implicitly (and silently) include it in the
+compilation.  This helpful behavior means that classes can get
+mysteriously recompiled when you are not expecting it, resulting in
+all manner of surprising mayhem. The mayhem ensues because although it
+understands to recompile B if necessary when compiling A, it doesn't
+know to recompile A when B changes (though knowing when to do the
+latter is the fundamental mission of <tt>make</tt> in the first
+place).  Attempting to reconcile this implicit compilation behavior
+with a set of file dependencies that one can put into a makefile
+eventually reduces one to hair pulling and ultimately to gibbering
+idiocy.
+<p>
+The most straightforward way out of this situation, the one which I
+took (until I wrote <tt>jdep</tt>), and the one which essentially
+everyone I know doing Java development work on Unix has taken, is to
+simply always recompile everything whenever recompiling anything.
+This has the virtue of being extremely easy to do in a makefile, as
+well as being absolutely foolproof from a dependency analysis
+standpoint.  Unfortunately, it is rather awkward to manage in a
+project environment where different people are responsible for
+different pieces of the source tree. Also, even with fast computers it
+is painfully time consuming once a project develops into having a
+large number of source files (which, in a non-trivial project, it
+eventually will because Java wants you to put each class into its own
+source file).
+<p>
+After suffering with this situation for about 5 years, cursing at
+<tt>javac</tt> all the while, I finally had a classic "Aha!"
+experience: from the perspective of <tt>make</tt>, <tt>javac</tt> does
+not behave like a compiler but more like a linker. It's just that it
+does its job using the pre-compilation (<tt>.java</tt>) files rather
+than the post-compilation (<tt>.class</tt>) ones. This perspective
+leads to the following <tt>make</tt> strategy: "compile" a
+<tt>.java</tt> file by <tt>touch</tt>ing the corresponding
+<tt>.class</tt> file (this updates the last-modified timestamp on the
+<tt>.class</tt> file, just as actually compiling it would), then
+"link" by running <tt>javac</tt> on all the <tt>.java</tt> files whose
+<tt>.class</tt> files now need to be "linked" according to
+<tt>make</tt>'s dependency analysis. This strategy relies on the
+assumption that it is possible to have your makefile synthesize a
+command line by mapping a list of <tt>.class</tt> files into a
+corresponding list of <tt>.java</tt> files. Fortunately, GNU
+<tt>make</tt> readily does this sort of thing (I don't know about
+Sun's <tt>make</tt> or others, but given that we do have GNU
+<tt>make</tt> there's no real reason to use anything else anyway).
+<p>
+The final piece of the puzzle concerns file dependencies.  When making
+a C program, the <tt>.c</tt> files will depend on the <tt>.h</tt>
+files, which you can either keep track of by hand (which is tedious
+and error prone), or you can have an automated tool keep track of the
+dependencies for you. In the case of C this is very easy, since all
+you need to do is have the C compiler produce a list of which
+<tt>.h</tt> files it included in the process of compiling a given
+<tt>.c</tt> file. The GNU C compiler, <tt>gcc</tt>, does this in a
+very convenient way with the <tt>-MD</tt> command line option (or, in
+practice, the <tt>-MMD</tt> option), which not only produces a list of
+file dependencies but outputs it in the form of an actual
+<tt>make</tt> dependency line (in a <tt>.d</tt> file) that can be
+included in your makefile directly.
+<p>
+The case of Java is a bit more complex.  Remember, as we said, that
+Java doesn't use header files. Instead, a given <tt>.java</tt> file
+depends, in effect, on other <tt>.java</tt> files. There is no obvious
+inclusion hierarchy to follow as there is in C.  Ideally,
+<tt>javac</tt> would spit out the same kind of dependency information
+that <tt>gcc</tt> does, but it doesn't (and is unlikely ever to, in my
+estimation, since this mode of use is really not what its creators
+intended).  Due to the several ways in which one can implicitly import
+a class without ever naming it explicitly in an <tt>import</tt>
+declaration, writing a tool to extract the dependency information from
+the Java source files yourself is not really practical (or rather, if
+you succeed in doing it you will have done a large fraction of the
+work towards writing your own Java compiler). However, once
+<tt>javac</tt> has run, the dependency information we need is present
+in the resulting <tt>.class</tt> files, which are very easy to read
+(indeed, were designed to be in a machine-friendly format). This was
+even easier for me, as I already had a program to read and dump
+<tt>.class</tt> files laying around that I had written years ago when
+I was messing with Java compilers; it was a simple matter to modify it
+into the program now called <tt>jdep</tt>.
+<p>
+Here is what <tt>jdep</tt> does: it reads a batch of <tt>.class</tt>
+files and produces a corresponding set of <tt>.d</tt> files suitable
+for inclusion into a GNU makefile.  These <tt>.d</tt> files define the
+dependencies used to drive the "compilation" phase of the make process
+described above, in which compilation is simulated using
+<tt>touch</tt> (actually, using <tt>touchp</tt>, but that's a minor
+detail we'll get to in a moment).
+<p>
+<a name="instructions"></a><h3>Using <tt>jdep</tt> to enable using
+<tt>javac</tt> with <tt>make</tt></h3>
+<p>
+By convention, the source for a Java class <tt>Foo</tt> is placed in a
+file named <tt>Foo.java</tt>.  Moreover, this file is generally
+located according the class's package in a file directory tree whose
+hierarchical structure matches that of the overall package
+hierarchy. These conventions are not so much enforced by the compiler
+as they are expected by it, in the sense that if you deviate from them
+it will get confused and not always do the right thing. Consequently,
+we assume you will continue to follow these conventions when using
+<tt>jdep</tt> and <tt>make</tt>.  (None of this applies, of course, to
+IDEs, which keep track of all this stuff in a database or project file
+of some kind. But if I wanted to use an IDE I wouldn't be here. The
+problem with Integrated Development Environments is they're so darned
+Integrated. But I digress.)
+<p>
+The discussion that follows describes setting up a makefile. For
+expository purposes, the <tt>make</tt> variable <tt>JAVA_DIR</tt> is
+assumed to be set to the pathname of the directory root of the file
+tree where Java source files live, while the variable
+<tt>CLASS_DIR</tt> fulfills the same role with respect to compiled
+class files, and <tt>DEP_DIR</tt> similarly with respect to
+<tt>.d</tt> files.  Thus for example, the <tt>class bar.baz.Foo</tt>
+would have its source file be taken from
+<tt>$(JAVA_DIR)/bar/baz/Foo.java</tt>, while its compiled class file
+would end up in <tt>$(CLASS_DIR)/bar/baz/Foo.class</tt> and its
+dependencies would be described in <tt>$(DEP_DIR)/bar/baz/Foo.d</tt>.
+<p>
+As described in more detail in the preceding section, the key trick to
+making this work is to think of compilation with <tt>javac</tt> as the
+"link" phase of the build process, and to "compile" by using
+<tt>touch</tt>.
+<p>
+An example of how you set all this up is included in the subdirectory
+<tt>example</tt> of the <tt>jdep</tt> package.
+<p>
+In the example, we define the list of source files:
+<p>
+<blockquote><pre>
+EXAMPLE_SRC = $(shell cd $(JAVA_DIR); find com -name '*.java')
+</pre></blockquote>
+<p>
+I used <tt>find</tt>; however, you can get your list of source files
+however you like, including by just listing them directly.
+<p>
+We then define the list of class files by doing a pattern transformation on the
+list of source files:
+<p>
+<blockquote><pre>
+EXAMPLE_CLA = $(EXAMPLE_SRC:%.java=$(CLASS_DIR)/%.class)
+</pre></blockquote>
+<p>
+The list of make dependency files is defined similarly:
+<p>
+<blockquote><pre>
+EXAMPLE_DEP = $(EXAMPLE_SRC:%.java=$(DEP_DIR)/%.d)
+</pre></blockquote>
+<p>
+"Compile" using <tt>touchp</tt>. I use the following implicit
+<tt>make</tt> rule:
+<p>
+<blockquote><pre>
+$(CLASS_DIR)/%.class: $(JAVA_DIR)/%.java
+        touchp $@
+</pre></blockquote>
+<p>
+Note that I use <tt>touchp</tt> rather than <tt>touch</tt>. This is a
+simple shell script that is included as part of the <tt>jdep</tt>
+package. The analogy is to <tt>mkdir</tt>: <tt>touchp</tt> is to
+<tt>touch</tt> as <tt>mkdir -p</tt> is to <tt>mkdir</tt>. Normally,
+<tt>touch</tt> will create a zero-length file if the file being
+touched does not yet exist.  However, if the directory the file would
+live in itself does not exist, <tt>touch</tt> will fail. However,
+<tt>touchp</tt> will create the directory path down to the point
+needed for the <tt>touch</tt> to succeed, just as <tt>mkdir -p</tt>
+will create an entire directory path.
+<p>
+"Link" using <tt>javac</tt>, using a <tt>make</tt> rule where the
+ultimate target depends on the list of class files:
+<p>
+<blockquote><pre>
+$(MODULE_NAME_TARGET): $(EXAMPLE_CLA)
+</pre></blockquote>
+<p>
+in this rule, execute a <tt>javac</tt> command line like:
+<p>
+<blockquote><pre>
+        javac -d $(CLASS_DIR) -classpath $(CLASS_DIR) $(?:$(CLASS_DIR)/%.class=$(JAVA_DIR)/%.java)
+</pre></blockquote>
+<p>
+<tt>make</tt> will bind the variable <tt>$?</tt> to the list of class
+files that were newer than the target file, i.e., the ones that got
+touched in the "compilation" phase.  This list of class files is
+converted back into a list of source files using another pattern
+transformation.
+<p>
+Next, as a further part of the "link" rule, run <tt>jdep</tt> to update the
+<tt>.d</tt> files for any classes that got compiled:
+<p>
+<blockquote><pre>
+        jdep -c $(CLASS_DIR) -j $(JAVA_DIR) -d $(DEP_DIR) $?
+</pre></blockquote>
+<p>
+Finally, produce an updated version of the ultimate target file. I create a
+<tt>.jar</tt> file of all the <tt>.class</tt> files:
+<p>
+<blockquote><pre>
+        cd $(CLASS_DIR); jar cf ../$@ `find com -name '*.class'`
+</pre></blockquote>
+<p>
+but if you prefer to work with a loose collection of .<tt>class</tt>
+files you could instead just have your ultimate target be a marker
+file that you <tt>touch</tt>:
+<p>
+<blockquote><pre>
+        touch $@
+</pre></blockquote>
+<p>
+Finally, be sure to include the dependency files that <tt>jdep</tt>
+generated in earlier runs of <tt>make</tt>:
+<p>
+<blockquote><pre>
+-include $(EXAMPLE_DEP)
+</pre></blockquote>
+<p>
+<h3>One limitation of this approach</h3>
+<p>
+The scheme described here absolutely depends on the 1-to-1
+correspondence between source files and class files. However, the
+compilation rules for Java permit you in some cases to violate this
+principle. For example, you are allowed to place more than one
+non-public (i.e., package scoped) class in a source file.  Though it's
+arguably a bad practice anyway, if you use <tt>jdep</tt> you simply
+can't do that at all.  You <i>can</i> use inner classes, however,
+since there is enough information in a class file to track an inner
+class back to its outer class.
+<p><br>
+<p>
+<h3><tt>jdep</tt> Command Reference</h3>
+<p>
+<h4>Synopsis:</h4>
+<p>
+<blockquote>
+    <tt>jdep</tt> <i>option</i>... <i>file</i>...
+</blockquote>
+<p>
+Each <i>file</i> should be a Java <tt>.class</tt> file, which may be
+specified either with or without the trailing <tt>.class</tt> portion
+of the name.
+<p>
+The program accepts the following options:
+<p>
+<tt>-a</tt>
+<blockquote>
+Include all packages in the dependency information generated. By
+default, <tt>jdep</tt> will omit packages whose package names begin
+with <tt>java.</tt>, <tt>javax.</tt>, or <tt>com.sun.</tt> since these
+contain library classes that your makefile won't know how to build anyway.
+</blockquote>
+<p>
+<tt>-e <i>package</i></tt>
+<blockquote>
+Exclude the package <i>package</i> from the dependency information
+generated. This option may be specified as many times as you wish to exclude as
+many packages as you wish. Use this to exclude library packages in addition to
+the defaults mentioned in the description of the <tt>-a</tt> flag.
+</blockquote>
+<p>
+<tt>-i <i>package</i></tt>
+<blockquote>
+Include the package <i>package</i> in the dependency information generated.
+This option may be specified as many times as you wish to include as many
+packages as you wish. If this option is not used, <tt>jdep</tt> will include
+all packages not explicitly excluded with the <tt>-e</tt> option. However, if
+at least one <tt>-i</tt> option is specified, then <tt>jdep</tt> will only
+include those packages it was specifically told to include.
+</blockquote>
+<p>
+<tt>-h</tt>
+<blockquote>
+Print a summary of the command options and then exit.
+</blockquote>
+<p>
+<tt>-c <i>cpath</i></tt>
+<blockquote>
+Use <i>cpath</i> as the base directory for <tt>.class</tt> files. This path
+will be used to locate class files for inner classes.
+</blockquote>
+<p>
+<tt>-j <i>jpath</i></tt>
+<blockquote>
+Use <i>jpath</i> as the base directory for <tt>.java</tt> files. This path
+will be prepended to source file paths in the resultant dependency
+files.
+</blockquote>
+<p>
+<tt>-d <i>dpath</i></tt>
+<blockquote>
+Use <i>dpath</i> as the base directory for <tt>.d</tt> files. This path will
+be used to generate the output file pathnames for the various
+dependency files which <tt>jdep</tt> produces.
+</blockquote>
+</td></tr></table>
+<p>
+<hr>
+<p>
+<a href=http://www.fudco.com/chip>Chip Morningstar</a>
+(<a href=mailto:chip@fudco.com>chip@fudco.com</a>)
+</body>
+</html>
