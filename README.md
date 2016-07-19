@@ -339,7 +339,7 @@ Use *jpath* as the base directory for `.java` files. This path
 will be prepended to source file paths in the resultant dependency
 files.
 
-##### `-d *dpath*`
+##### `-d <i>dpath</>`
 
 Use *dpath* as the base directory for `.d` files. This path will
 be used to generate the output file pathnames for the various
@@ -348,23 +348,25 @@ dependency files which `jdep` produces.
 
 ## Change history
 
-Version 1.1:
+#### Version 1.1
 
 Added the `-e' command line option to explicitly specify which packages will be
 excluded from analysis.
 
-Version 1.2:
+#### Version 1.2
 
 Added the `-i' command line option to explicitly specify which packages will be
 included in the analysis.
 
 Cleaned up the text of the usage information output by the `-h' option.
 
-Version 1.3:
+#### Version 1.3:
+
 Changed the license from the GPL to the MIT license.
+
 Documentation refresh.
 
-Version 1.4:
+#### Version 1.4
 
 Migrate onto GitHub.
 
