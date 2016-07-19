@@ -292,9 +292,8 @@ and inner classes are nearly always preferrable to embedded package classes.
 
 #### Synopsis:
 
-```
+
     `jdep` *option*... *file*...
-```
 
 Each *file* should be a Java `.class` file, which may be specified either with
 or without the trailing `.class` portion of the name.
@@ -308,14 +307,14 @@ default, `jdep` will omit packages whose package names begin
 with `java.`, `javax.`, or `com.sun.` since these
 contain library classes that your makefile won't know how to build anyway.
 
-##### `-e *package*`
+##### `-e` *package*
 
 Exclude the package *package* from the dependency information
 generated. This option may be specified as many times as you wish to exclude as
 many packages as you wish. Use this to exclude library packages in addition to
 the defaults mentioned in the description of the `-a` flag.
 
-##### `-i *package*`
+##### `-i` *package*
 
 Include the package *package* in the dependency information generated.
 This option may be specified as many times as you wish to include as many
@@ -328,18 +327,18 @@ include those packages it was specifically told to include.
 
 Print a summary of the command options and then exit.
 
-##### `-c *cpath*`
+##### `-c` *cpath*
 
 Use *cpath* as the base directory for `.class` files. This path
 will be used to locate class files for inner classes.
 
-##### `-j *jpath*`
+##### `-j` *jpath*
 
 Use *jpath* as the base directory for `.java` files. This path
 will be prepended to source file paths in the resultant dependency
 files.
 
-##### `-d <i>dpath</>`
+##### `-d` *dpath*
 
 Use *dpath* as the base directory for `.d` files. This path will
 be used to generate the output file pathnames for the various
