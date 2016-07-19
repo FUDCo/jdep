@@ -1,3 +1,5 @@
+The MIT License (MIT)
+
 Copyright 2009 Chip Morningstar
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
