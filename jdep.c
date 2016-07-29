@@ -67,8 +67,11 @@ PackageInfo *IncludedPackages = NULL;
 #define CONSTANT_Float                   4
 #define CONSTANT_Integer                 3
 #define CONSTANT_InterfaceMethodref     11
+#define CONSTANT_InvokeDynamic          18
 #define CONSTANT_Long                    5
 #define CONSTANT_Methodref              10
+#define CONSTANT_MethodHandle           15
+#define CONSTANT_MethodType             16
 #define CONSTANT_NameAndType            12
 #define CONSTANT_String                  8
 #define CONSTANT_Utf8                    1
@@ -669,6 +672,20 @@ readConstantPoolInfo(FILE *fyle, char *filename)
             word length = readWord(fyle);
             char *str = (char *) readByteArray(fyle, length);
             return (cp_info *) build_constant_utf8_info(str);
+        }
+        case CONSTANT_MethodHandle:{
+            readByte(fyle); /* reference_kind */
+            readWord(fyle); /* reference_index */
+            return NULL;
+        }
+        case CONSTANT_MethodType:{
+            readWord(fyle); /* descriptor_index */
+            return NULL;
+        }
+        case CONSTANT_InvokeDynamic:{
+            readWord(fyle); /* bootstrap_method_attr_index */
+            readWord(fyle); /* name_and_type_index */
+            return NULL;
         }
         default:
             fprintf(stderr, "invalid constant pool tag %d in %s\n", tag,
