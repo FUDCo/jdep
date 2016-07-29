@@ -24,6 +24,7 @@
   Written by Chip Morningstar.
 */
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -153,6 +154,7 @@ analyzeClassFile(char *name)
 {
     FILE *outfyle;
     char outfilename[1000];
+    char depfilename[1000];
     char *deps[10000];
     int depCount;
     int i;
@@ -181,7 +183,10 @@ analyzeClassFile(char *name)
         fprintf(outfyle, "%s%s.class: \\\n", ClassRoot, name);
         for (i = 0; i < depCount; ++i) {
             if (index(deps[i], '$') == NULL) {
-                fprintf(outfyle, "  %s%s.java\\\n", JavaRoot, deps[i]);
+                snprintf(depfilename, sizeof(depfilename), "%s%s.java", JavaRoot, deps[i]);
+                if (access(depfilename, F_OK) != -1) {
+                    fprintf(outfyle, "  %s%s.java\\\n", JavaRoot, deps[i]);
+                }
             }
         }
         fprintf(outfyle, "\n");
