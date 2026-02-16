@@ -20,21 +20,22 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
-  
+
   Written by Chip Morningstar.
 */
 
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <strings.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
 typedef unsigned char   byte;           /*  8-bit number */
-typedef unsigned short  word;           /* 16-bit number */
-typedef unsigned long   longword;       /* 32-bit number */
+typedef uint16_t        word;           /* 16-bit number */
+typedef uint32_t        longword;       /* 32-bit number */
 
 typedef int     bool;
 #define TRUE    1
@@ -64,16 +65,19 @@ PackageInfo *IncludedPackages = NULL;
 
 #define CONSTANT_Class                   7
 #define CONSTANT_Double                  6
+#define CONSTANT_Dynamic                17
 #define CONSTANT_Fieldref                9
 #define CONSTANT_Float                   4
 #define CONSTANT_Integer                 3
 #define CONSTANT_InterfaceMethodref     11
 #define CONSTANT_InvokeDynamic          18
 #define CONSTANT_Long                    5
-#define CONSTANT_Methodref              10
 #define CONSTANT_MethodHandle           15
 #define CONSTANT_MethodType             16
+#define CONSTANT_Methodref              10
+#define CONSTANT_Module                 19
 #define CONSTANT_NameAndType            12
+#define CONSTANT_Package                20
 #define CONSTANT_String                  8
 #define CONSTANT_Utf8                    1
 
@@ -687,9 +691,15 @@ readConstantPoolInfo(FILE *fyle, char *filename)
             readWord(fyle); /* descriptor_index */
             return NULL;
         }
+        case CONSTANT_Dynamic:
         case CONSTANT_InvokeDynamic:{
             readWord(fyle); /* bootstrap_method_attr_index */
             readWord(fyle); /* name_and_type_index */
+            return NULL;
+        }
+        case CONSTANT_Module:
+        case CONSTANT_Package:{
+            readWord(fyle); /* name_index */
             return NULL;
         }
         default:
